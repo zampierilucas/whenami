@@ -1,0 +1,15 @@
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Build and distribution
+*.egg-info/
+build/
+dist/
+token.json
+credentials.json
+config.json
+.vscode/
+.coverage

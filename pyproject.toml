@@ -1,0 +1,53 @@
+[project]
+name = "whenami"
+version = "0.1.2"
+description = "A powerful Google Calendar tool that merges multiple calendars to find your true availability across work and personal schedules"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Lucas Zampieri", email = "lcasmz54@gmail.com"}
+]
+requires-python = ">=3.9"
+dependencies = [
+    "google-auth-oauthlib",
+    "google-auth",
+    "google-api-python-client",
+]
+keywords = ["calendar", "google-calendar", "scheduling", "productivity", "time-management"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Scheduling",
+    "Topic :: Utilities",
+    "Environment :: Console",
+]
+
+[project.urls]
+Homepage = "https://github.com/zampierilucas/whenami"
+Repository = "https://github.com/zampierilucas/whenami"
+Issues = "https://github.com/zampierilucas/whenami/issues"
+Changelog = "https://github.com/zampierilucas/whenami/releases"
+
+[project.scripts]
+whenami = "whenami.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.packages.find]
+where = ["src"]

@@ -1,0 +1,62 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish_to_test_pypi:
+        description: 'Publish to Test PyPI instead of PyPI'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.event.inputs.publish_to_test_pypi == 'true' && 'test-pypi' || 'pypi' }}
+      url: ${{ github.event.inputs.publish_to_test_pypi == 'true' && 'https://test.pypi.org/p/whenami' || 'https://pypi.org/p/whenami' }}
+
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build
+
+    - name: Build package
+      run: python -m build
+
+    - name: Check package
+      run: |
+        pip install twine
+        twine check dist/*
+
+    - name: Publish to Test PyPI
+      if: github.event.inputs.publish_to_test_pypi == 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        verbose: true
+
+    - name: Publish to PyPI
+      if: github.event.inputs.publish_to_test_pypi != 'true'
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        verbose: true
+
+    - name: Create GitHub Release Asset
+      if: github.event_name == 'release'
+      run: |
+        echo "Package published successfully to PyPI!" > release-notes.txt
+        echo "Install with: pip install whenami==${{ github.ref_name }}" >> release-notes.txt

@@ -1,1 +1,1 @@
-"""Utility modules for IMaFree"""
+"""Utility modules for Whenami"""

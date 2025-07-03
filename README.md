@@ -134,8 +134,12 @@ whenami will automatically handle the conversions and show your true availabilit
 
 ## Configuration
 
+The tool will automatically create a `~/.config/whenami/` directory for storing configuration files. You can place your configuration files there for system-wide access, or use the current directory for project-specific configurations.
+
 1. Copy the example config file:
 ```bash
+cp config.json.example ~/.config/whenami/config.json
+# Or for current directory:
 cp config.json.example config.json
 ```
 
@@ -194,9 +198,11 @@ The tool requires Google Calendar API authentication:
 2. Create a new project or select an existing one
 3. Enable the Google Calendar API
 4. Create OAuth 2.0 credentials (Desktop application)
-5. Download the credentials and save as `credentials.json` in the project root
+5. Download the credentials and save as `credentials.json` in one of these locations:
+   - `~/.config/whenami/credentials.json` (recommended for system-wide access)
+   - `./credentials.json` (current directory, for project-specific setup)
 
-The first time you run the tool, it will open a browser window for authentication.
+The first time you run the tool, it will open a browser window for authentication. The authentication token will be saved in `~/.config/whenami/token.json` for future use.
 
 ## Development
 

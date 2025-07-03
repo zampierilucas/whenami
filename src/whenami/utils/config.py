@@ -14,15 +14,33 @@
 
 import json
 import os
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
+def get_config_dir():
+    """Get the config directory path and create it if it doesn't exist"""
+    config_dir = Path.home() / '.config' / 'whenami'
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
+
+
 def load_config():
+    """Load config from .config/whenami/config.json or fallback to current directory"""
+    config_dir = get_config_dir()
+    config_path = config_dir / 'config.json'
+    
     try:
-        with open('config.json', 'r') as f:
+        with open(config_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        return {"default_calendar": None}
+        # Fallback to current directory
+        try:
+            with open('config.json', 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"[INFO] No config.json found. Please create one at {config_path}")
+            return {"default_calendar": None}
 
 
 def get_default_timezone(config):

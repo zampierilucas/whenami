@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+from whenami import __version__
 from whenami.utils.auth import authenticate_google_calendar
 from whenami.utils.calendar import (
     list_timezones, get_calendar_info, get_timezone,
@@ -23,6 +24,8 @@ from whenami.utils.config import load_config, get_default_timezone
 
 def main():
     parser = argparse.ArgumentParser(description='Find free slots in your calendar')
+    parser.add_argument('--version', action='version', version=f'whenami {__version__}')
+    
     date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument('--today', action='store_true', help='Show free slots for today')
     date_group.add_argument('--tomorrow', action='store_true', help='Show free slots for tomorrow')

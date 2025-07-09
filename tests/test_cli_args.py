@@ -88,7 +88,7 @@ class TestCLIArgumentParsing:
             elif date_arg == '--next-two-weeks':
                 assert args.next_two_weeks is True
             elif date_arg == '--date':
-                assert args.date is True
+                assert args.date == ''
     
     def test_mutually_exclusive_date_arguments(self):
         """Test that date range arguments are mutually exclusive"""

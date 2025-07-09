@@ -109,7 +109,7 @@ def get_timezone(tz_name):
 def get_date_range(args, tz):
     today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    if args.today or not any([args.tomorrow, args.next_week, args.next_two_weeks, args.date]):
+    if args.today or not any([args.tomorrow, args.next_week, args.next_two_weeks, args.date, getattr(args, 'date_range', None)]):
         return today, today + timedelta(days=1)
     elif args.tomorrow:
         tomorrow = today + timedelta(days=1)
@@ -121,23 +121,69 @@ def get_date_range(args, tz):
         return next_monday, next_monday + timedelta(weeks=1)
     elif args.next_two_weeks:
         return today, today + timedelta(weeks=2)
-    elif args.date:
+    elif getattr(args, 'date_range', None):
+        # Parse date range in format "start,end"
         try:
-            start_date = datetime.strptime(input("Enter start date (DD-MM-YYYY): "), "%d-%m-%Y")
-            end_date = datetime.strptime(input("Enter end date (DD-MM-YYYY): "), "%d-%m-%Y")
+            start_str, end_str = args.date_range.split(',')
+            start_str = start_str.strip().replace('/', '-')
+            end_str = end_str.strip().replace('/', '-')
 
-            # Set start to beginning of day and end to beginning of next day
+            # Try 4-digit year first, then 2-digit year
+            try:
+                start_date = datetime.strptime(start_str, "%d-%m-%Y")
+            except ValueError:
+                start_date = datetime.strptime(start_str, "%d-%m-%y")
+
+            try:
+                end_date = datetime.strptime(end_str, "%d-%m-%Y")
+            except ValueError:
+                end_date = datetime.strptime(end_str, "%d-%m-%y")
+
             start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
             end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=tz)
 
-            # If same date, make it a full day
-            if start_date.date() == end_date.date():
-                end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-
             return (start_date, end_date)
         except ValueError:
-            print("[ERROR] Invalid date format. Please use DD-MM-YYYY.")
+            print(f"[ERROR] Invalid date range format '{args.date_range}'. Please use 'DD/MM/YYYY,DD/MM/YYYY' or 'DD/MM/YY,DD/MM/YY'.")
             sys.exit(1)
+    elif args.date is not None:
+        # If args.date is a non-empty string, parse it directly
+        if args.date and isinstance(args.date, str):
+            try:
+                # Support both DD/MM/YYYY, DD-MM-YYYY, DD/MM/YY, and DD-MM-YY formats
+                date_str = args.date.replace('/', '-')
+
+                # Try 4-digit year first
+                try:
+                    single_date = datetime.strptime(date_str, "%d-%m-%Y")
+                except ValueError:
+                    # Try 2-digit year
+                    single_date = datetime.strptime(date_str, "%d-%m-%y")
+
+                start_date = single_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
+                end_date = single_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=tz)
+                return (start_date, end_date)
+            except ValueError:
+                print(f"[ERROR] Invalid date format '{args.date}'. Please use DD/MM/YYYY, DD-MM-YYYY, DD/MM/YY, or DD-MM-YY.")
+                sys.exit(1)
+        else:
+            # Interactive mode (when --date is passed without value)
+            try:
+                start_date = datetime.strptime(input("Enter start date (DD-MM-YYYY): "), "%d-%m-%Y")
+                end_date = datetime.strptime(input("Enter end date (DD-MM-YYYY): "), "%d-%m-%Y")
+
+                # Set start to beginning of day and end to beginning of next day
+                start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=tz)
+                end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=tz)
+
+                # If same date, make it a full day
+                if start_date.date() == end_date.date():
+                    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+                return (start_date, end_date)
+            except ValueError:
+                print("[ERROR] Invalid date format. Please use DD-MM-YYYY.")
+                sys.exit(1)
 
 
 def is_workday(date):
@@ -159,7 +205,7 @@ def filter_time_hours(slots: List[TimeSlot], config: dict, args) -> List[TimeSlo
     # If --all-hours is specified, skip all time filtering
     if getattr(args, 'all_hours', False):
         return slots
-    
+
     # Determine which hours to use
     if args.work_hours:
         # Use work hours when explicitly requested
@@ -481,7 +527,7 @@ def find_free_slots(service, start_date, end_date, calendar_ids,
                         singleEvents=True,
                         orderBy='startTime'
                     ).execute()
-                    
+
                     events = events_result.get('items', [])
                     cal_busy = []
                     for event in events:
@@ -492,10 +538,10 @@ def find_free_slots(service, start_date, end_date, calendar_ids,
                                 'end': event['end']['dateTime'],
                                 'summary': event.get('summary', 'Untitled Event')
                             })
-                    
+
                     if cal_busy:
                         if hasattr(args, 'debug') and args.debug:
-                            print(f"\n[DEBUG] Found {len(cal_busy)} busy periods in {calendars_info[cal_id]['name']}")
+                            print(f"me[DEBUG] Found {len(cal_busy)} busy periods in {calendars_info[cal_id]['name']}")
                         busy_periods_list.append(cal_busy)
                 except Exception as e:
                     print(f"[WARNING] Failed to fetch events for calendar {cal_id}: {e}")

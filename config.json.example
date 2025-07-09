@@ -26,5 +26,10 @@
         "end": "22:00"
     },
     "minimum_slot_duration": 30,
-    "default_timezone": "Europe/Dublin"
+    "default_timezone": "Europe/Dublin",
+    "llm": {
+        "model": "ollama/llama3.3",
+        "api_base": "http://localhost:11434",
+        "enabled": false
+    }
 }

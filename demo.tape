@@ -132,3 +132,21 @@ Enter
 Type "whenami --today --convert-tz America/New_York"
 Enter
 Sleep 5s
+
+# Show AI natural language - timezone example
+Ctrl+L
+Type "# AI Example: Natural language with timezone"
+Sleep 500ms
+Enter
+Type 'whenami "tomorrow in New York time"'
+Enter
+Sleep 6s
+
+# Show AI natural language - complex query
+Ctrl+L
+Type "# AI Example: Complex natural language query"
+Sleep 500ms
+Enter
+Type 'whenami "free work hours next week"'
+Enter
+Sleep 6s

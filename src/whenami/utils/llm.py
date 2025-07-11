@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from whenami.utils.config import load_config
 
@@ -52,67 +52,6 @@ def parse_with_llm(input_text: str, debug: bool = False) -> Optional[Dict]:
     return _llm_process(input_text, config, debug=debug)
 
 
-def get_command_reference() -> str:
-    """Get complete command reference for LLM by executing --help"""
-    import subprocess
-    import sys
-    import os
-
-    try:
-        # Get the path to the current module to find main.py
-        current_dir = os.path.dirname(os.path.dirname(__file__))
-        main_py_path = os.path.join(current_dir, 'main.py')
-
-        # Run the help command
-        result = subprocess.run(
-            [sys.executable, main_py_path, '--help'],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-
-        if result.returncode == 0:
-            help_output = result.stdout
-
-            # Add a header and some examples for better LLM understanding
-            command_ref = f"""WHENAMI COMMAND REFERENCE:
-
-{help_output}
-
-ADDITIONAL EXAMPLES FOR NATURAL LANGUAGE PARSING:
-  "free tomorrow" -> --tomorrow --free
-  "busy next week" -> --next-week --busy
-  "work hours today" -> --today --work-hours
-  "personal time on 15/07/25" -> --date "15/07/25" --personal-hours
-  "show me August 2025" -> --date-range "01/08/2025,31/08/2025"
-  "free weekdays next week" -> --next-week --work-days --free
-"""
-            return command_ref
-        else:
-            # Fallback if help command fails
-            return _get_fallback_command_reference()
-
-    except Exception:
-        # Fallback if subprocess fails
-        return _get_fallback_command_reference()
-
-
-def _get_fallback_command_reference() -> str:
-    """Fallback command reference if --help extraction fails"""
-    return """
-WHENAMI COMMAND REFERENCE:
-
-Basic date options: --today, --tomorrow, --next-week, --next-two-weeks
-Custom dates: --date "DD/MM/YYYY" or --date-range "start,end"
-Time filters: --work-hours, --personal-hours, --all-hours, --work-days
-Display: --free, --busy, --split, --event-name
-Output: --convert-tz, --list-tz, --debug
-
-Examples:
-  "free tomorrow" -> --tomorrow --free
-  "busy next week" -> --next-week --busy
-  "work hours on 15/07/25" -> --date "15/07/25" --work-hours
-"""
 
 
 def _llm_process(text: str, config: Dict, debug: bool = False) -> Optional[Dict]:
@@ -121,52 +60,27 @@ def _llm_process(text: str, config: Dict, debug: bool = False) -> Optional[Dict]
         # Set up the LLM client
         litellm.api_base = config.get('api_base', 'http://100.118.13.153:11434')
 
-        command_ref = get_command_reference()
         current_date = datetime.now().strftime("%Y-%m-%d")
 
-        system_prompt = f"""You are a JSON response generator. Convert natural language calendar queries to JSON objects.
+        system_prompt = f"""You are a JSON generator. Convert calendar queries to JSON objects only.
 
-Today's date: {current_date}
+Today: {current_date}
 
-{command_ref}
+Rules:
+- Calculate actual dates in DD/MM/YYYY format (today={current_date})
+- "next week" = Monday-Sunday of next week
+- Default to today if no date mentioned
+- Use boolean true/false, not strings
 
-CRITICAL: You must respond with ONLY a JSON object. Do not write code, explanations, or anything else.
+Options: date, date_range, free, busy, work_hours, personal_hours, all_hours, work_days, split, event_name, convert_tz
 
-JSON RULES:
-- Use boolean true/false (not strings)
-- Date format: DD/MM/YYYY or DD/MM/YY  
-- Date ranges: "start,end" format
-- Calculate dates from today: {current_date}
+Examples:
+"free tomorrow" → {{"date": "12/07/2025", "free": true}}
+"busy next week" → {{"date_range": "14/07/2025,20/07/2025", "busy": true}}
+"work hours today" → {{"date": "11/07/2025", "work_hours": true}}
+"next week nytime" → {{"date_range": "14/07/2025,20/07/2025", "convert_tz": "America/New_York"}}
 
-EXAMPLES:
-Input: "free tomorrow"
-Output: {{"tomorrow": true, "free": true}}
-
-Input: "busy next week" 
-Output: {{"next_week": true, "busy": true}}
-
-Input: "work hours today"
-Output: {{"today": true, "work_hours": true}}
-
-Input: "on 15/07/25"
-Output: {{"date": "15/07/25"}}
-
-Input: "free tomorrow in New York time"
-Output: {{"tomorrow": true, "free": true, "convert_tz": "America/New_York"}}
-
-Input: "busy next week convert to UTC"
-Output: {{"next_week": true, "busy": true, "convert_tz": "UTC"}}
-
-Input: "show all hours today"
-Output: {{"today": true, "all_hours": true}}
-
-Input: "show split free tomorrow with event names"
-Output: {{"tomorrow": true, "free": true, "split": true, "event_name": true}}
-
-Input: "weekdays only next week"
-Output: {{"next_week": true, "work_days": true}}
-
-RESPOND WITH JSON ONLY - NO CODE, NO EXPLANATIONS."""
+ONLY return JSON, no explanations."""
 
         user_prompt = f"""Query: "{text}"
 
@@ -184,10 +98,10 @@ JSON Response:"""
         )
 
         result_text = response.choices[0].message.content.strip()
-        
+
         if debug:
             print(f"[LLM DEBUG] Raw LLM Response: {result_text}")
-        
+
         # Clean up response - remove markdown formatting if present
         if result_text.startswith('```json'):
             result_text = result_text.replace('```json', '').replace('```', '').strip()
@@ -212,19 +126,16 @@ def convert_llm_to_args(llm_result: Dict) -> List[str]:
     """Convert LLM result dictionary to command line arguments"""
     args = []
 
-    # Date options (mutually exclusive)
-    if llm_result.get('today'):
-        args.append('--today')
-    elif llm_result.get('tomorrow'):
-        args.append('--tomorrow')
-    elif llm_result.get('next_week'):
-        args.append('--next-week')
-    elif llm_result.get('next_two_weeks'):
-        args.append('--next-two-weeks')
-    elif llm_result.get('date'):
+    # Date options - LLM now provides explicit dates
+    if llm_result.get('date'):
         args.extend(['--date', llm_result['date']])
     elif llm_result.get('date_range'):
         args.extend(['--date-range', llm_result['date_range']])
+    else:
+        # Default to today if no date specified
+        current_date = datetime.now()
+        date_str = current_date.strftime('%d/%m/%Y')
+        args.extend(['--date', date_str])
 
     # Filter options
     if llm_result.get('free'):
@@ -241,11 +152,11 @@ def convert_llm_to_args(llm_result: Dict) -> List[str]:
         args.append('--personal-hours')
     if llm_result.get('all_hours'):
         args.append('--all-hours')
-    
+
     # Timezone conversion
     if llm_result.get('convert_tz'):
         args.extend(['--convert-tz', llm_result['convert_tz']])
-    
+
     # Output options
     if llm_result.get('split'):
         args.append('--split')
@@ -253,7 +164,7 @@ def convert_llm_to_args(llm_result: Dict) -> List[str]:
         args.append('--event-name')
     if llm_result.get('debug'):
         args.append('--debug')
-    
+
     # These commands don't make sense for LLM processing since they're informational
     # --list-tz, --llm-config, --llm-test, --llm-help, --version, --help
 

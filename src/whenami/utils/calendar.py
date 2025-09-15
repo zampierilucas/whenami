@@ -109,11 +109,16 @@ def get_timezone(tz_name):
 def get_date_range(args, tz):
     today = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
 
-    if args.today or not any([args.tomorrow, args.next_week, args.next_two_weeks, args.date, getattr(args, 'date_range', None)]):
+    if args.today or not any([args.tomorrow, args.current_week, args.next_week, args.next_two_weeks, args.date, getattr(args, 'date_range', None)]):
         return today, today + timedelta(days=1)
     elif args.tomorrow:
         tomorrow = today + timedelta(days=1)
         return tomorrow, tomorrow + timedelta(days=1)
+    elif args.current_week:
+        # Calculate days since Monday (0=Monday, 6=Sunday)
+        days_since_monday = today.weekday()
+        current_monday = today - timedelta(days=days_since_monday)
+        return current_monday, current_monday + timedelta(weeks=1)
     elif args.next_week:
         # Calculate days until next Monday
         days_until_monday = (7 - today.weekday())

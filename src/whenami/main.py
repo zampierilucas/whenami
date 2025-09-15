@@ -54,6 +54,7 @@ def main():
     date_group = parser.add_mutually_exclusive_group()
     date_group.add_argument('--today', action='store_true', help='Show free slots for today')
     date_group.add_argument('--tomorrow', action='store_true', help='Show free slots for tomorrow')
+    date_group.add_argument('--current-week', action='store_true', help='Show free slots for current week')
     date_group.add_argument('--next-week', action='store_true', help='Show free slots for next week')
     date_group.add_argument('--next-two-weeks', action='store_true', help='Show free slots for next two weeks')
     date_group.add_argument('--date', type=str, nargs='?', const='', help='Enter custom date (DD/MM/YYYY, DD/MM/YY, DD-MM-YYYY, DD-MM-YY) or prompt')

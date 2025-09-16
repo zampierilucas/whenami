@@ -115,10 +115,12 @@ def get_date_range(args, tz):
         tomorrow = today + timedelta(days=1)
         return tomorrow, tomorrow + timedelta(days=1)
     elif args.current_week:
-        # Calculate days since Monday (0=Monday, 6=Sunday)
-        days_since_monday = today.weekday()
-        current_monday = today - timedelta(days=days_since_monday)
-        return current_monday, current_monday + timedelta(weeks=1)
+        # Start from current day and go until end of current week (Sunday)
+        days_until_sunday = 6 - today.weekday()  # 0=Monday, 6=Sunday
+        end_of_week = today + timedelta(days=days_until_sunday)
+        # Set to end of Sunday (23:59:59)
+        end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return today, end_of_week
     elif args.next_week:
         # Calculate days until next Monday
         days_until_monday = (7 - today.weekday())
